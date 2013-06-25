@@ -3,14 +3,24 @@ import xml.etree.ElementTree as ET
 NAMESPACE = '{urn:xmind:xmap:xmlns:content:2.0}'
 
 
+class Topic(object):
+    ''' base class for topic'''
+    def __init__(self, title, children):
+        super(Topic, self).__init__()
+        self._title = title
+        self._children = children
+
+    def get_children(self):
+        return self._children
+
+    def get_title(self):
+        return self._title
+
+
 def parse_node(element):
     node_title = element.find(NAMESPACE + 'title').text
     node_children = element.find(NAMESPACE + 'children')
-
-    print node_title
-    print node_children
-
-    return {'title': node_title, 'children': node_children}
+    return Topic(node_title, node_children)
 
 
 def main():
