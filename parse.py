@@ -14,6 +14,7 @@ def parse_node(element):
 
 
 def main():
+
     try:
         tree = ET.parse('content.xml')
         root = tree.getroot()
