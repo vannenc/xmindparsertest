@@ -1,89 +1,29 @@
-import xml.etree.ElementTree as ET
+#! /usr/bin/env python
 
-NAMESPACE = '{urn:xmind:xmap:xmlns:content:2.0}'
-
-
-class Topic(object):
-    ''' base class for topic'''
-    def __init__(self, title, children):
-        super(Topic, self).__init__()
-        self._title = title
-        self._children = children
-
-    def get_children(self):
-        return self._children
-
-    def get_title(self):
-        return self._title
-
-
-def parse_node(element):
-    node_title = element.find(NAMESPACE + 'title').text
-    node_children = element.find(NAMESPACE + 'children')
-    return Topic(node_title, node_children)
+from mekk.xmind import XMindDocument
 
 
 def main():
 
-    try:
-        tree = ET.parse('content.xml')
-        root = tree.getroot()
+    xmind = XMindDocument.open("mmaps.xmind")
 
-        #going through each sheet
-        for sheet in root:
+    sheet = xmind.get_first_sheet()
+    print "Sheet title: ", sheet.get_title()
 
-            # sheet container and title
-            topics_container = \
-                sheet.find(NAMESPACE + 'topic')
-            sheet_title = sheet[1].text
-            print 'Sheet title: ' + sheet_title
+    root = sheet.get_root_topic()
+    print "Root title: ", root.get_title()
+    print "Root note: ", root.get_note()
+    level = ''
 
-            #topic, title
-            topic_root_title = topics_container.find(NAMESPACE + 'title').text
-            topics_root = topics_container.find(NAMESPACE + 'children')
+    for topic in root.get_subtopics():
+        print "* ", topic.get_title()
+        print "   label: ", topic.get_label()
+        print "   link: ", topic.get_link()
+        print "   markers: ", list(topic.get_markers())
 
-            print 'root topic title: >' + topic_root_title
+        for topic in topic.get_subtopics():
+            print "** ", topic.get_title()
 
-            topics_children_attached = None
-            topics_children_detached = None
-
-            if len(topics_root) > 1:
-
-                for child in topics_root:
-
-                    if child.get('type') == 'attached':
-                        topics_children_attached = child
-
-                    elif child.get('type') == 'detached':
-                        topics_children_detached = child
-
-            else:
-                topics_children_attached = topics_root[0]
-
-            for child in topics_children_attached:
-                first_pass = parse_node(child)
-                sheet_end = False
-
-                if 'children' in first_pass:
-
-                    topic_children = first_pass['children']
-
-                    while sheet_end is False:
-                        tmp = parse_node(topic_children)
-                        print tmp
-
-                        if 'children' in tmp and tmp['children'] is not None:
-
-                            topic_children = tmp['children']
-                        else:
-                            sheet_end = True
-
-            #{urn:xmind:xmap:xmlns:content:2.0}title
-            print '-----------------------------'
-            print ''
-
-    except Exception, e:
-        print e
 
 if __name__ == '__main__':
     main()
