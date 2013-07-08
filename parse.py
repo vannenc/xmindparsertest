@@ -2,6 +2,40 @@
 
 from mekk.xmind import XMindDocument
 
+import sqlite3
+
+DATABASE = 'business.db'
+CONNECTION = None
+
+
+def connect(f):
+
+    def inner_func(*args, **kwargs):
+        global CONNECTION
+        global DATABASE
+
+        if CONNECTION is None:
+            CONNECTION = sqlite3.connect(DATABASE)
+
+        return f(*args, **kwargs)
+
+    return inner_func
+
+
+def prepare_connection():
+    global CONNECTION
+
+    if CONNECTION is None:
+        CONNECTION = sqlite3.connect(DATABASE)
+
+
+def close_connection():
+    global CONNECTION
+
+    if CONNECTION is not None:
+        CONNECTION.commit()
+        CONNECTION.close()
+
 
 def get_children(elem):
 
@@ -10,6 +44,74 @@ def get_children(elem):
             yield t
     else:
         yield None
+
+
+def fetch():
+
+    if CONNECTION is not None:
+
+        c = CONNECTION.cursor()
+        recordset = c.execute('select * from business')
+
+        for row in recordset:
+            print row
+
+
+@connect
+def add_sheet(sheetyear):
+
+    if CONNECTION is not None:
+
+        c = CONNECTION.cursor()
+
+        if c is not None:
+
+            c.execute('INSERT INTO paper_year VALUES(NULL, "%s")' % sheetyear)
+            CONNECTION.commit()
+
+            last_rowid = c.lastrowid
+            c.close()
+            return last_rowid
+        else:
+            return -1
+
+
+@connect
+def add_topic(sheet_id, topic_name, topic_parent, is_answer):
+
+    if CONNECTION is not None:
+
+        c = CONNECTION.cursor()
+
+        if c is not None:
+
+            if topic_parent is None and is_answer is None:
+                c.execute('INSERT INTO topic VALUES \
+                                (NULL, ?, NULL, NULL, ?)',
+                         (topic_name, sheet_id))
+
+            elif topic_parent is None and is_answer is not None:
+                c.execute('INSERT INTO topic VALUES \
+                                (NULL, ?, NULL, ?, ?)',
+                         (topic_name, is_answer, sheet_id))
+
+            elif topic_parent is not None and is_answer is None:
+                c.execute('INSERT INTO topic VALUES \
+                                (NULL, ?, ?, NULL, ?)',
+                         (topic_name, topic_parent, sheet_id))
+
+            else:
+                # id, name, parent, answer, sheet_id
+                c.execute('INSERT INTO topic VALUES (NULL, ?, ?, ?, ?)',
+                         (topic_name, topic_parent, is_answer, sheet_id))
+
+            CONNECTION.commit()
+            last_rowid = c.lastrowid
+            c.close()
+
+            return last_rowid
+        else:
+            return -1
 
 
 def main():
@@ -25,23 +127,42 @@ def main():
         print "Root note: ", root.get_note()
         level = ''
 
+        sheet_id = add_sheet(sheet.get_title())
+
         for topic in root.get_subtopics():
+            topic_name = r'' + topic.get_title()
             print "* ", topic.get_title()
-            #print "   label: ", topic.get_label()
-            #print "   link: ", topic.get_link()
-            #print "   markers: ", list(topic.get_markers())
+
+            topic_id = add_topic(sheet_id=sheet_id,
+                                 topic_name=topic_name,
+                                 topic_parent=None,
+                                 is_answer=False)
 
             #level 1
             for topic_1 in topic.get_subtopics():
-                print "** ", topic_1.get_title()
+                topic_1_name = topic_1.get_title()
+
+                topic_1_id = add_topic(sheet_id=sheet_id,
+                                       topic_name=topic_1_name,
+                                       topic_parent=topic_id,
+                                       is_answer=False)
 
                 #level 2
                 for topic_2 in topic_1.get_subtopics():
-                    print "***", topic.get_title()
+
+                    topic_2_name = topic_2.get_title()
+                    topic_2_id = add_topic(sheet_id=sheet_id,
+                                           topic_name=topic_2_name,
+                                           topic_parent=topic_1_id,
+                                           is_answer=False)
 
                     #level 3
                     for topic_3 in topic_2.get_subtopics():
-                        print "****", topic.get_title()
+                        topic_3_name = topic_2.get_title()
+                        topic_3_id = add_topic(sheet_id=sheet_id,
+                                               topic_name=topic_3_name,
+                                               topic_parent=topic_2_id,
+                                               is_answer=True)
 
             print ''
             print '----------------------------'
