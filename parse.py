@@ -83,7 +83,8 @@ def make_topic_answer(topic_id):
         c = CONNECTION.cursor()
 
         if c is not None:
-            c.execute('UPDATE topic set answer= ? WHERE topic_id = ? ', (1, topic_id))
+            c.execute('UPDATE topic set answer= ? WHERE topic_id = ? ',
+                     (1, topic_id))
             CONNECTION.commit()
 
             print 'answer: ..' + str(topic_id)
@@ -91,7 +92,7 @@ def make_topic_answer(topic_id):
 
 
 @connect
-def add_topic(sheet_id, topic_name, topic_parent, is_answer):
+def add_topic(sheet_id, topic_name, topic_parent, is_answer, level):
 
     if CONNECTION is not None:
 
@@ -102,23 +103,24 @@ def add_topic(sheet_id, topic_name, topic_parent, is_answer):
             try:
                 if topic_parent is None and is_answer is None:
                     c.execute('INSERT INTO topic VALUES \
-                                    (NULL, ?, NULL, NULL, ?)',
-                             (topic_name, sheet_id))
+                                    (NULL, ?, NULL, NULL, ?, ?)',
+                             (topic_name, sheet_id, level))
 
                 elif topic_parent is None and is_answer is not None:
                     c.execute('INSERT INTO topic VALUES \
-                                    (NULL, ?, NULL, ?, ?)',
-                             (topic_name, is_answer, sheet_id))
+                                    (NULL, ?, NULL, ?, ?, ?)',
+                             (topic_name, is_answer, sheet_id, level))
 
                 elif topic_parent is not None and is_answer is None:
                     c.execute('INSERT INTO topic VALUES \
-                                    (NULL, ?, ?, NULL, ?)',
-                             (topic_name, topic_parent, sheet_id))
+                                    (NULL, ?, ?, NULL, ?, ?)',
+                             (topic_name, topic_parent, sheet_id, level))
 
                 else:
                     # id, name, parent, answer, sheet_id
-                    c.execute('INSERT INTO topic VALUES (NULL, ?, ?, ?, ?)',
-                             (topic_name, topic_parent, is_answer, sheet_id))
+                    c.execute('INSERT INTO topic VALUES (NULL, ?, ?, ?, ?, ?)',
+                             (topic_name, topic_parent,
+                              is_answer, sheet_id, level))
 
                 CONNECTION.commit()
                 last_rowid = c.lastrowid
@@ -143,7 +145,7 @@ def main():
         root = sheet.get_root_topic()
         print "Root title: ", root.get_title()
         print "Root note: ", root.get_note()
-        level = ''
+        level = 0
 
         sheet_id = add_sheet(sheet.get_title())
 
@@ -151,41 +153,49 @@ def main():
             topic_name = r'' + topic.get_title()
             print "* ", topic.get_title()
 
+            level = 0
             topic_id = add_topic(sheet_id=sheet_id,
                                  topic_name=topic_name,
                                  topic_parent=None,
-                                 is_answer=False)
+                                 is_answer=False,
+                                 level=level)
 
             #level 1
             for topic_1 in topic.get_subtopics():
                 topic_1_name = topic_1.get_title()
 
+                level = 1
                 topic_1_id = add_topic(sheet_id=sheet_id,
                                        topic_name=topic_1_name,
                                        topic_parent=topic_id,
-                                       is_answer=False)
+                                       is_answer=False,
+                                       level=level)
                 topic_1_children = True
                 topic_2_children = False
 
                 #level 2
                 for topic_2 in topic_1.get_subtopics():
 
+                    level = 2
                     topic_2_name = topic_2.get_title()
                     topic_2_id = add_topic(sheet_id=sheet_id,
                                            topic_name=topic_2_name,
                                            topic_parent=topic_1_id,
-                                           is_answer=False)
+                                           is_answer=False,
+                                           level=level)
                     topic_2_children = True
                     topic_3_children = False
 
                     #level 3
                     for topic_3 in topic_2.get_subtopics():
                         print 'topic_3_id'
+                        level = 3
                         topic_3_name = topic_2.get_title()
                         topic_3_id = add_topic(sheet_id=sheet_id,
                                                topic_name=topic_3_name,
                                                topic_parent=topic_2_id,
-                                               is_answer=1)
+                                               is_answer=1,
+                                               level=level)
                         topic_3_children = True
 
                     #if level2 has no child

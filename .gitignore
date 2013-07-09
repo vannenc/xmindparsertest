@@ -1,1 +1,5 @@
 *.pyc
+*.xmind
+*.db
+*.sqlite
+*.xml
