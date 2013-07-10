@@ -58,7 +58,7 @@ def fetch():
 
 
 @connect
-def add_sheet(sheetyear):
+def add_sheet(sheetyear, root_title):
 
     if CONNECTION is not None:
 
@@ -66,7 +66,8 @@ def add_sheet(sheetyear):
 
         if c is not None:
 
-            c.execute('INSERT INTO paper_year VALUES(NULL, "%s")' % sheetyear)
+            c.execute('INSERT INTO paper_year VALUES(NULL, ?, ?)',
+                     (sheetyear, root_title))
             CONNECTION.commit()
 
             last_rowid = c.lastrowid
@@ -143,11 +144,12 @@ def main():
         print "Sheet title: ", sheet.get_title()
 
         root = sheet.get_root_topic()
+        root_title = root.get_title()
         print "Root title: ", root.get_title()
         print "Root note: ", root.get_note()
         level = 0
 
-        sheet_id = add_sheet(sheet.get_title())
+        sheet_id = add_sheet(sheet.get_title(), root_title)
 
         for topic in root.get_subtopics():
             topic_name = r'' + topic.get_title()
