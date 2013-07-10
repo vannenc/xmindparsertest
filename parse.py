@@ -66,7 +66,7 @@ def add_sheet(sheetyear, root_title):
 
         if c is not None:
 
-            c.execute('INSERT INTO paper_year VALUES(NULL, ?, ?)',
+            c.execute('INSERT INTO sheet VALUES(NULL, ?, ?)',
                      (sheetyear, root_title))
             CONNECTION.commit()
 
