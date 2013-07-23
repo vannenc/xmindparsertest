@@ -6,6 +6,7 @@ import sqlite3
 
 DATABASE = 'business.db'
 CONNECTION = None
+TOPIC_DELIMITER = '$$'
 
 
 def connect(f):
@@ -93,7 +94,8 @@ def make_topic_answer(topic_id):
 
 
 @connect
-def add_topic(sheet_id, topic_name, topic_parent, is_answer, level):
+def add_topic(sheet_id, topic_name, topic_parent,
+              is_answer, level, order, visible_menu):
 
     if CONNECTION is not None:
 
@@ -103,25 +105,45 @@ def add_topic(sheet_id, topic_name, topic_parent, is_answer, level):
 
             try:
                 if topic_parent is None and is_answer is None:
-                    c.execute('INSERT INTO topic VALUES \
-                                    (NULL, ?, NULL, NULL, ?, ?)',
-                             (topic_name, sheet_id, level))
+                    c.execute('INSERT INTO topic\
+                                (topic_id, name, parent, answer,\
+                                    sheet_id, level, topic_order,\
+                                                    visible_menu )\
+                                    VALUES \
+                                    (NULL, ?, NULL, NULL, ?, ?, ?, ?)',
+                             (topic_name, sheet_id, level,
+                              order, visible_menu))
 
                 elif topic_parent is None and is_answer is not None:
-                    c.execute('INSERT INTO topic VALUES \
-                                    (NULL, ?, NULL, ?, ?, ?)',
-                             (topic_name, is_answer, sheet_id, level))
+                    c.execute('INSERT INTO topic\
+                                (topic_id, name, parent, answer,\
+                                    sheet_id, level, topic_order,\
+                                                    visible_menu )\
+                                    VALUES \
+                                    (NULL, ?, NULL, ?, ?, ?, ?, ?)',
+                             (topic_name, is_answer,
+                              sheet_id, level, order, visible_menu))
 
                 elif topic_parent is not None and is_answer is None:
-                    c.execute('INSERT INTO topic VALUES \
-                                    (NULL, ?, ?, NULL, ?, ?)',
-                             (topic_name, topic_parent, sheet_id, level))
+                    c.execute('INSERT INTO topic\
+                                (topic_id, name, parent, answer,\
+                                    sheet_id, level, topic_order,\
+                                                    visible_menu )\
+                                    VALUES \
+                                    (NULL, ?, ?, NULL, ?, ?, ?, ?)',
+                             (topic_name, topic_parent,
+                              sheet_id, level, order, visible_menu))
 
                 else:
                     # id, name, parent, answer, sheet_id
-                    c.execute('INSERT INTO topic VALUES (NULL, ?, ?, ?, ?, ?)',
+                    c.execute('INSERT INTO topic\
+                                (topic_id, name, parent, answer,\
+                                    sheet_id, level, topic_order,\
+                                                    visible_menu )\
+                                    VALUES (NULL, ?, ?, ?,\
+                                                         ?, ?, ? ,?)',
                              (topic_name, topic_parent,
-                              is_answer, sheet_id, level))
+                              is_answer, sheet_id, level, order, visible_menu))
 
                 CONNECTION.commit()
                 last_rowid = c.lastrowid
@@ -129,6 +151,7 @@ def add_topic(sheet_id, topic_name, topic_parent, is_answer, level):
                 return last_rowid
 
             except Exception, e:
+                print e
                 raise e
 
         else:
@@ -149,67 +172,88 @@ def main():
         print "Root note: ", root.get_note()
         level = 0
 
+        #add year and question title
         sheet_id = add_sheet(sheet.get_title(), root_title)
 
+        #direct parent, that is the titles
         for topic in root.get_subtopics():
             topic_name = r'' + topic.get_title()
             print "* ", topic.get_title()
 
+            visible_in_menu = 1
             level = 0
+            is_ignored = False
+            is_numbered = False
+            topic_number = 0
+            internal_topic_number = 0
+
+            #split to find numbering and any ignore flag
+            topic_name_parts = topic_name.split(TOPIC_DELIMITER)
+            topic_name_parts_len = len(topic_name_parts)
+
+            if topic_name_parts_len == 4:
+                topic_name = topic_name_parts[3].strip()
+                is_ignored = True
+
+                try:
+                    topic_number = int(topic_name_parts[1])
+                    is_numbered = True
+
+                except:
+                    print 'Error parsing number in topic ' + topic_name
+                    is_numbered = False
+
+            elif topic_name_parts_len == 3:
+                topic_name = topic_name_parts[2].strip()
+                is_ignored = False
+
+                try:
+                    topic_number = int(topic_name_parts[1])
+                    is_numbered = True
+
+                except:
+                    print 'Error parsing number in topic ' + topic_name
+                    is_numbered = False
+
+            else:
+                is_numbered = False
+                is_ignored = False
+
+            if is_numbered is False:
+                internal_topic_number += 1
+                topic_number = internal_topic_number
+
+            if is_ignored is True:
+                visible_in_menu = 0
+
             topic_id = add_topic(sheet_id=sheet_id,
                                  topic_name=topic_name,
                                  topic_parent=None,
                                  is_answer=False,
-                                 level=level)
+                                 level=level,
+                                 order=topic_number,
+                                 visible_menu=visible_in_menu)
+            #increment order
+            print 'Number: ' + str(topic_number) + ' -' + str(topic_id)
 
-            #level 1
+            #children nodes, that's the answers
             for topic_1 in topic.get_subtopics():
                 topic_1_name = topic_1.get_title()
-
                 level = 1
                 topic_1_id = add_topic(sheet_id=sheet_id,
                                        topic_name=topic_1_name,
                                        topic_parent=topic_id,
-                                       is_answer=False,
-                                       level=level)
-                topic_1_children = True
-                topic_2_children = False
+                                       is_answer=1,
+                                       level=level,
+                                       order=topic_number,
+                                       visible_menu=0)
 
-                #level 2
-                for topic_2 in topic_1.get_subtopics():
-
-                    level = 2
-                    topic_2_name = topic_2.get_title()
-                    topic_2_id = add_topic(sheet_id=sheet_id,
-                                           topic_name=topic_2_name,
-                                           topic_parent=topic_1_id,
-                                           is_answer=False,
-                                           level=level)
-                    topic_2_children = True
-                    topic_3_children = False
-
-                    #level 3
-                    for topic_3 in topic_2.get_subtopics():
-                        print 'topic_3_id'
-                        level = 3
-                        topic_3_name = topic_2.get_title()
-                        topic_3_id = add_topic(sheet_id=sheet_id,
-                                               topic_name=topic_3_name,
-                                               topic_parent=topic_2_id,
-                                               is_answer=1,
-                                               level=level)
-                        topic_3_children = True
-
-                    #if level2 has no child
-                    if topic_3_children is False:
-                        make_topic_answer(topic_2_id)
-
-                #if level1 has no child
-                if topic_2_children is False:
-                    make_topic_answer(topic_1_id)
+                print 'Answer: ' + str(topic_1_id)
 
             print ''
             print '----------------------------'
+
+        break
 
 if __name__ == '__main__':
     main()
