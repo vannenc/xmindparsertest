@@ -158,9 +158,9 @@ def add_topic(sheet_id, topic_name, topic_parent,
             return -1
 
 
-def main():
+def process_xmind_file(xmind_file='mmaps.xmind'):
 
-    xmind = XMindDocument.open("mmaps.xmind")
+    xmind = XMindDocument.open(xmind_file)
 
     for sheet in xmind.get_all_sheets():
 
@@ -253,7 +253,6 @@ def main():
             print ''
             print '----------------------------'
 
-        #break
 
 if __name__ == '__main__':
-    main()
+    process_xmind_file()
